@@ -3,17 +3,15 @@ package view
 import (
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
+    "fyne.io/fyne/v2/data/binding"
     "fyne.io/fyne/v2/widget"
     "github.com/Tkach360/TkachMessenger/internal/client/controller"
 )
 
-// структура объекта представления
-// отвечает за весь UI и отображение приложения
 type View struct {
     app        fyne.App
     window     fyne.Window
     controller *controller.Controller
-    messages   *widget.Label
     input      *widget.Entry
 }
 
@@ -23,25 +21,37 @@ func NewView(app fyne.App, controller *controller.Controller) *View {
         controller: controller,
     }
 
-    // в дальнейшем нужно чтобы все подобные данные
-    // были сохранены в одном объекте Config
-    view.window = app.NewWindow("TkachMessenger")
+    view.window = app.NewWindow("Messenger")
 
-    view.messages = widget.NewLabel("Сообщения будут здесь...")
+    messagesBinding := controller.Model.GetMessagesBinding()
+
+    messagesList := widget.NewListWithData(
+        messagesBinding,
+        func() fyne.CanvasObject {
+            return widget.NewLabel("")
+        },
+        func(item binding.DataItem, object fyne.CanvasObject) {
+            label := object.(*widget.Label)
+            str, _ := item.(binding.String).Get()
+            label.SetText(str)
+        },
+    )
 
     view.input = widget.NewEntry()
     view.input.SetPlaceHolder("Введите сообщение...")
 
     sendButton := widget.NewButton("Отправить", func() {
         view.controller.SendMessageInModel(view.input.Text)
-        view.input.SetText("")
-        view.updateMessages()
+        view.input.SetText("") // Очищаем поле после отправки
     })
 
-    content := container.NewVBox(
-        view.messages,
-        view.input,
-        sendButton,
+    // TODO: выделить компоновку интерфейса в отдельный файл
+    content := container.NewBorder(
+        nil,
+        container.NewVBox(view.input, sendButton), // панель снизу
+        nil,
+        nil,
+        messagesList, // по центру располагается список сообщений
     )
 
     view.window.SetContent(content)
@@ -50,16 +60,6 @@ func NewView(app fyne.App, controller *controller.Controller) *View {
     return view
 }
 
-// запуск приложения
 func (v *View) ShowAndRun() {
     v.window.ShowAndRun()
-}
-
-// обновление отображения сообщений
-func (v *View) updateMessages() {
-    var text string
-    for _, msg := range v.controller.Model.Messages {
-        text += msg.Sender + ": " + msg.Content + "\n"
-    }
-    v.messages.SetText(text)
 }

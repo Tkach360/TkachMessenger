@@ -6,24 +6,19 @@ import (
     "fmt"
     "net"
     "time"
-)
 
-// сообщение (пока что тествое)
-type Message struct {
-    Sender    string `json:"sender"`
-    Content   string `json:"content"`
-    Timestamp string `json:"timestamp"`
-}
+    "fyne.io/fyne/v2/data/binding"
+)
 
 // структура модели клиентского приложения
 type AppModel struct {
-    Messages []Message
-    conn     net.Conn
+    MessagesBinding binding.StringList
+    conn            net.Conn
 }
 
 func NewAppModel() *AppModel {
     model := &AppModel{
-        Messages: []Message{},
+        MessagesBinding: binding.NewStringList(),
     }
 
     // подключаемся к серверу
@@ -37,6 +32,10 @@ func NewAppModel() *AppModel {
     go model.receiveMessages()
 
     return model
+}
+
+func (m *AppModel) GetMessagesBinding() binding.StringList {
+    return m.MessagesBinding
 }
 
 // отправить сообщение на сервер
@@ -66,6 +65,10 @@ func (m *AppModel) receiveMessages() {
             continue
         }
         fmt.Println(msg) // лотлвыатидлтывадмто
-        m.Messages = append(m.Messages, msg)
+        //m.MessagesBinding = append(m.MessagesBinding, msg)
+
+        // TODO: сделать панель сообщения не простым тестовым полем, а чем нибудь более красивым
+        displayMsg := fmt.Sprintf("%s [%s]: %s", msg.Sender, msg.Timestamp, msg.Content) // формат сообщения
+        m.MessagesBinding.Append(displayMsg)
     }
 }
