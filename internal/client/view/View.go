@@ -12,7 +12,10 @@ type View struct {
     app        fyne.App
     window     fyne.Window
     controller *controller.Controller
-    input      *widget.Entry
+
+    input              *widget.Entry
+    chatContainer      *fyne.Container // контейнер чата, сохраняю его, чтобы не создавать постоянно
+    chatsListContainer *fyne.Container // контейнер списка чатов
 }
 
 func NewView(app fyne.App, controller *controller.Controller) *View {
@@ -21,9 +24,30 @@ func NewView(app fyne.App, controller *controller.Controller) *View {
         controller: controller,
     }
 
-    view.window = app.NewWindow("Messenger")
+    view.window = app.NewWindow("TkachMessenger")
 
-    messagesBinding := controller.Model.GetMessagesBinding()
+    // TODO: выделить компоновку интерфейса в отдельный файл
+    content := container.NewBorder(
+        nil,
+        view.CreateInputContainer(), // панель снизу
+        nil,
+        nil,
+        view.CreateMessagesScroll(), // по центру располагается список сообщений
+    )
+
+    view.window.SetContent(content)
+    view.window.Resize(fyne.NewSize(400, 300))
+
+    return view
+}
+
+func (v *View) ShowAndRun() {
+    v.window.ShowAndRun()
+}
+
+// создать прокручиваемый список сообщений
+func (v *View) CreateMessagesScroll() fyne.CanvasObject {
+    messagesBinding := v.controller.Model.GetMessagesBinding()
 
     messagesList := widget.NewListWithData(
         messagesBinding,
@@ -37,29 +61,18 @@ func NewView(app fyne.App, controller *controller.Controller) *View {
         },
     )
 
-    view.input = widget.NewEntry()
-    view.input.SetPlaceHolder("Введите сообщение...")
-
-    sendButton := widget.NewButton("Отправить", func() {
-        view.controller.SendMessageInModel(view.input.Text)
-        view.input.SetText("") // Очищаем поле после отправки
-    })
-
-    // TODO: выделить компоновку интерфейса в отдельный файл
-    content := container.NewBorder(
-        nil,
-        container.NewVBox(view.input, sendButton), // панель снизу
-        nil,
-        nil,
-        messagesList, // по центру располагается список сообщений
-    )
-
-    view.window.SetContent(content)
-    view.window.Resize(fyne.NewSize(400, 300))
-
-    return view
+    scrollContainer := container.NewScroll(messagesList)
+    return scrollContainer
 }
 
-func (v *View) ShowAndRun() {
-    v.window.ShowAndRun()
+func (v *View) CreateInputContainer() *fyne.Container {
+    v.input = widget.NewEntry()
+    v.input.SetPlaceHolder("Введите сообщение...")
+
+    sendButton := widget.NewButton("Отправить", func() {
+        v.controller.SendMessageInModel(v.input.Text)
+        v.input.SetText("") // Очищаем поле после отправки
+    })
+
+    return container.NewBorder(nil, nil, nil, sendButton, v.input)
 }
