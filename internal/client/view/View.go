@@ -3,10 +3,11 @@ package view
 import (
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
-    "fyne.io/fyne/v2/data/binding"
+    //"fyne.io/fyne/v2/data/binding"
     "fyne.io/fyne/v2/widget"
     "github.com/Tkach360/TkachMessenger/internal/client/controller"
-    "github.com/Tkach360/TkachMessenger/internal/client/model"
+    //"github.com/Tkach360/TkachMessenger/internal/client/model"
+    "github.com/Tkach360/TkachMessenger/internal/client/view/msgview"
 )
 
 type View struct {
@@ -50,26 +51,8 @@ func (v *View) CreateMessagesScroll() fyne.CanvasObject {
 
     messagesList := widget.NewListWithData(
         messagesBinding,
-        func() fyne.CanvasObject {
-            return container.NewHBox(
-                widget.NewLabel(""),
-                widget.NewLabel(""),
-                widget.NewLabel(""),
-            )
-        },
-        func(item binding.DataItem, obj fyne.CanvasObject) {
-            m, _ := item.(binding.Untyped).Get()
-            msg := m.(model.Message)
-
-            box := obj.(*fyne.Container)
-            timeLabel := box.Objects[0].(*widget.Label)
-            senderLabel := box.Objects[1].(*widget.Label)
-            textLabel := box.Objects[2].(*widget.Label)
-
-            timeLabel.SetText(msg.Timestamp)
-            senderLabel.SetText(msg.Sender)
-            textLabel.SetText(msg.Content)
-        },
+        msgview.GetMessageWidgetSample,
+        msgview.FillMessageSample,
     )
 
     scrollContainer := container.NewScroll(messagesList)
