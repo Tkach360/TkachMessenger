@@ -13,9 +13,7 @@ type View struct {
     window     fyne.Window
     controller *controller.Controller
 
-    input              *widget.Entry
-    chatContainer      *fyne.Container // контейнер чата, сохраняю его, чтобы не создавать постоянно
-    chatsListContainer *fyne.Container // контейнер списка чатов
+    chatContainer *fyne.Container // контейнер чата, сохраняю его, чтобы не создавать постоянно
 }
 
 func NewView(app fyne.App, controller *controller.Controller) *View {
@@ -29,10 +27,10 @@ func NewView(app fyne.App, controller *controller.Controller) *View {
     // TODO: выделить компоновку интерфейса в отдельный файл
     content := container.NewBorder(
         nil,
-        view.CreateInputContainer(), // панель снизу
         nil,
         nil,
-        view.CreateMessagesScroll(), // по центру располагается список сообщений
+        nil,
+        view.CreateChatContainer(),
     )
 
     view.window.SetContent(content)
@@ -65,14 +63,26 @@ func (v *View) CreateMessagesScroll() fyne.CanvasObject {
     return scrollContainer
 }
 
+// создать контейнер ввода сообщения
 func (v *View) CreateInputContainer() *fyne.Container {
-    v.input = widget.NewEntry()
-    v.input.SetPlaceHolder("Введите сообщение...")
+    input := widget.NewEntry()
+    input.SetPlaceHolder("Введите сообщение...")
 
     sendButton := widget.NewButton("Отправить", func() {
-        v.controller.SendMessageInModel(v.input.Text)
-        v.input.SetText("") // Очищаем поле после отправки
+        v.controller.SendMessageInModel(input.Text)
+        input.SetText("") // Очищаем поле после отправки
     })
 
-    return container.NewBorder(nil, nil, nil, sendButton, v.input)
+    return container.NewBorder(nil, nil, nil, sendButton, input)
+}
+
+// создать контейнер чата
+func (v *View) CreateChatContainer() *fyne.Container {
+    return container.NewBorder(
+        nil,
+        v.CreateInputContainer(),
+        nil,
+        nil,
+        v.CreateMessagesScroll(),
+    )
 }
