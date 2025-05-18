@@ -12,13 +12,13 @@ import (
 
 // структура модели клиентского приложения
 type AppModel struct {
-    MessagesBinding binding.StringList
+    MessagesBinding binding.UntypedList
     conn            net.Conn
 }
 
 func NewAppModel() *AppModel {
     model := &AppModel{
-        MessagesBinding: binding.NewStringList(),
+        MessagesBinding: binding.NewUntypedList(),
     }
 
     // подключаемся к серверу
@@ -34,7 +34,7 @@ func NewAppModel() *AppModel {
     return model
 }
 
-func (m *AppModel) GetMessagesBinding() binding.StringList {
+func (m *AppModel) GetMessagesBinding() binding.UntypedList {
     return m.MessagesBinding
 }
 
@@ -68,7 +68,7 @@ func (m *AppModel) receiveMessages() {
         //m.MessagesBinding = append(m.MessagesBinding, msg)
 
         // TODO: сделать панель сообщения не простым тестовым полем, а чем нибудь более красивым
-        displayMsg := fmt.Sprintf("%s [%s]: %s", msg.Sender, msg.Timestamp, msg.Content) // формат сообщения
-        m.MessagesBinding.Append(displayMsg)
+        // displayMsg := fmt.Sprintf("%s [%s]: %s", msg.Sender, msg.Timestamp, msg.Content) // формат сообщения
+        m.MessagesBinding.Append(msg)
     }
 }
