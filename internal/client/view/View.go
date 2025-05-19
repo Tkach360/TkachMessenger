@@ -109,10 +109,10 @@ func (v *View) CreateChatsListScroll() fyne.CanvasObject {
         chatUnt, _ := item.(binding.Untyped).Get()
         chat := chatUnt.(datamodel.Chat)
 
-        v.controller.OpenChat(chat.ID)
-        fmt.Println("открыл чат")
         v.border.Objects[0] = v.chatContainer
         v.border.Refresh()
+        v.controller.OpenChat(chat.ID)
+        fmt.Println("открыл чат")
 
         // v.border.Refresh()
     }

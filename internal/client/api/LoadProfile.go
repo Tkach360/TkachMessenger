@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 
-	"fyne.io/fyne/v2/data/binding"
 	"github.com/Tkach360/TkachMessenger/internal/client/model/datamodel"
 )
 
@@ -17,10 +16,10 @@ func LoadProfile() *datamodel.Profile {
 		UserID: userName,
 		Chats: []datamodel.Chat{
 			{
-				ID:       userName,
+				ID:       "test",
 				Name:     "NewChat",
 				Type:     1,
-				Messages: binding.NewUntypedList(),
+				Messages: make([]datamodel.Message, 0),
 			},
 		},
 	}

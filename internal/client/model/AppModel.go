@@ -65,7 +65,7 @@ func (m *AppModel) SendMessage(content string) {
     }
 
     msg := datamodel.Message{
-        ChatID:    "NewChat",
+        ChatID:    "test",
         Sender:    m.Profile.UserID, // тут нужно будет заменить на реальный идентификатор
         Content:   content,
         Timestamp: time.Now().Format(time.RFC3339), // лучший ли это формат для отображения времени?
@@ -89,7 +89,8 @@ func (m *AppModel) receiveMessages() {
 
         for i, chat := range m.Profile.Chats {
             if chat.ID == msg.ChatID {
-                m.Profile.Chats[i].Messages.Append(msg)
+                m.Profile.Chats[i].AddMessage(msg)
+                fmt.Println("сохранил сообщение в чате")
                 if msg.ChatID == m.currentChatID {
                     m.MessagesBinding.Append(msg)
                 }
@@ -106,13 +107,17 @@ func (m *AppModel) SetCurrentChat(chatID string) {
     m.MessagesBinding.Set([]interface{}{})
     for _, chat := range m.Profile.Chats {
         if chat.ID == chatID {
-            // for _, msg := range chat.Messages {
+            for _, msg := range chat.Messages {
+                m.MessagesBinding.Append(msg)
+            }
+            // fmt.Println("нашел чат")
+            // for i := 0; i < len(chat.Messages); i++ {
+            //     msg := chat.Messages[i]
+
+            //     fmt.Println(msg.Content)
+
             //     m.MessagesBinding.Append(msg)
             // }
-            for i := 0; i < chat.Messages.Length(); i++ {
-                item, _ := chat.Messages.GetItem(i)
-                m.MessagesBinding.Append(item)
-            }
             break
         }
     }
