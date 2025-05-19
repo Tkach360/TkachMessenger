@@ -20,3 +20,7 @@ func (c *Controller) SendMessageInModel(content string) {
         c.Model.SendMessage(content)
     }
 }
+
+func (c *Controller) OpenChat(chatID string) {
+    c.Model.SetCurrentChat(chatID)
+}

@@ -1,11 +1,17 @@
 package view
 
 import (
+    "fmt"
+
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
+    "fyne.io/fyne/v2/data/binding"
+
     //"fyne.io/fyne/v2/data/binding"
     "fyne.io/fyne/v2/widget"
     "github.com/Tkach360/TkachMessenger/internal/client/controller"
+    "github.com/Tkach360/TkachMessenger/internal/client/model/datamodel"
+
     //"github.com/Tkach360/TkachMessenger/internal/client/model"
     "github.com/Tkach360/TkachMessenger/internal/client/view/msgview"
 )
@@ -13,9 +19,11 @@ import (
 type View struct {
     app        fyne.App
     window     fyne.Window
+    border     *fyne.Container
     controller *controller.Controller
 
-    chatContainer *fyne.Container // контейнер чата, сохраняю его, чтобы не создавать постоянно
+    chatContainer      *fyne.Container // контейнер чата, сохраняю его, чтобы не создавать постоянно
+    chatsListContainer *fyne.Container // также сохраняю контейнер чатов
 }
 
 func NewView(app fyne.App, controller *controller.Controller) *View {
@@ -26,16 +34,19 @@ func NewView(app fyne.App, controller *controller.Controller) *View {
 
     view.window = app.NewWindow("TkachMessenger")
 
+    view.chatContainer = view.CreateChatContainer()
+    view.chatsListContainer = view.CreateChatsListContainer()
+
     // TODO: выделить компоновку интерфейса в отдельный файл
-    content := container.NewBorder(
+    view.border = container.NewBorder(
+        view.CreateTopPanel(),
         nil,
         nil,
         nil,
-        nil,
-        view.CreateChatContainer(),
+        view.chatContainer,
     )
 
-    view.window.SetContent(content)
+    view.window.SetContent(view.border)
     view.window.Resize(fyne.NewSize(400, 300))
 
     return view
@@ -80,5 +91,59 @@ func (v *View) CreateChatContainer() *fyne.Container {
         nil,
         nil,
         v.CreateMessagesScroll(),
+    )
+}
+
+// создать прокручиваемый список чатов
+func (v *View) CreateChatsListScroll() fyne.CanvasObject {
+    chatsListBinding := v.controller.Model.GetChatsListBinding()
+
+    chatsList := widget.NewListWithData(
+        chatsListBinding,
+        msgview.GetChatsListWidgetSample,
+        msgview.FillChatsListSample,
+    )
+
+    chatsList.OnSelected = func(id widget.ListItemID) {
+        item, _ := chatsListBinding.GetItem(id)
+        chatUnt, _ := item.(binding.Untyped).Get()
+        chat := chatUnt.(datamodel.Chat)
+
+        v.controller.OpenChat(chat.ID)
+        fmt.Println("открыл чат")
+        v.border.Objects[0] = v.chatContainer
+        v.border.Refresh()
+
+        // v.border.Refresh()
+    }
+
+    scrollContainer := container.NewScroll(chatsList)
+    return scrollContainer
+}
+
+// создать контейнер списка чатов
+func (v *View) CreateChatsListContainer() *fyne.Container {
+    return container.NewBorder(
+        nil,
+        nil,
+        nil,
+        nil,
+        v.CreateChatsListScroll(),
+    )
+}
+
+func (v *View) CreateTopPanel() *fyne.Container {
+
+    backBtn := widget.NewButton("<-", func() {
+        v.border.Objects[0] = v.chatsListContainer
+        v.border.Refresh()
+    })
+
+    return container.NewBorder(
+        nil,
+        nil,
+        backBtn,
+        nil,
+        widget.NewLabel("тут будет имя чата"),
     )
 }

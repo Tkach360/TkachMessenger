@@ -4,13 +4,13 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
-	"github.com/Tkach360/TkachMessenger/internal/client/model"
+	"github.com/Tkach360/TkachMessenger/internal/client/model/datamodel"
 )
 
 // функция для заполнения шаблона сообщения
 func FillMessageSample(item binding.DataItem, obj fyne.CanvasObject) {
 	m, _ := item.(binding.Untyped).Get()
-	msg := m.(model.Message)
+	msg := m.(datamodel.Message)
 
 	box := obj.(*fyne.Container)
 	timeLabel := box.Objects[0].(*widget.Label)
