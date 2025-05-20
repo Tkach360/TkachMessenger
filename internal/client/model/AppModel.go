@@ -1,7 +1,7 @@
 package model
 
 import (
-    "bufio"
+    //"bufio"
     "encoding/json"
     "fmt"
     "net"
@@ -29,7 +29,6 @@ func NewAppModel() *AppModel {
         ChatsBinding:    binding.NewUntypedList(),
     }
 
-    // подключаемся к серверу
     conn, err := net.Dial("tcp", "localhost:8080")
     if err != nil {
         fmt.Println("Ошибка подключения к серверу:", err)
@@ -43,6 +42,14 @@ func NewAppModel() *AppModel {
     for _, chat := range model.Profile.Chats {
         model.ChatsBinding.Append(chat)
     }
+
+    initMsg := struct {
+        UserID string `json:"UserID"`
+    }{
+        UserID: model.Profile.UserID,
+    }
+
+    json.NewEncoder(model.conn).Encode(initMsg)
 
     go model.receiveMessages()
 
@@ -70,35 +77,47 @@ func (m *AppModel) SendMessage(content string) {
         Content:   content,
         Timestamp: time.Now().Format(time.RFC3339), // лучший ли это формат для отображения времени?
     }
-    jsonMsg, _ := json.Marshal(msg)
-    fmt.Fprintf(m.conn, "%s\n", jsonMsg)
+
+    json.NewEncoder(m.conn).Encode(msg)
     fmt.Println("Отправил", msg.Content)
+
+    // сразу добавляю сообщение в чат, чтобы отображалось
+    for i, chat := range m.Profile.Chats {
+        if chat.ID == msg.ChatID {
+            m.Profile.Chats[i].AddMessage(msg)
+            fmt.Println("сохранил сообщение в чате ", msg.Content)
+            if msg.ChatID == m.currentChatID {
+                m.MessagesBinding.Append(msg)
+            }
+            break
+        }
+    }
 }
 
-// горутина для приема сообщений от сервера
+// В методе receiveMessages():
 func (m *AppModel) receiveMessages() {
-    scanner := bufio.NewScanner(m.conn)
-    for scanner.Scan() {
+    decoder := json.NewDecoder(m.conn)
+    for {
         var msg datamodel.Message
-        err := json.Unmarshal(scanner.Bytes(), &msg)
-        if err != nil {
-            fmt.Println("Ошибка чтения сообщения:", err)
-            continue
+        if err := decoder.Decode(&msg); err != nil {
+            fmt.Println("Соединение с сервером разорвано:", err)
+            m.conn.Close()
+            m.conn = nil
+            return // Выходим из горутины при ошибке
         }
-        fmt.Println(msg) // лотлвыатидлтывадмто
 
+        fmt.Println("Получено сообщение:", msg.Content)
+
+        // Убрал дублирование - было два Append
         for i, chat := range m.Profile.Chats {
             if chat.ID == msg.ChatID {
                 m.Profile.Chats[i].AddMessage(msg)
-                fmt.Println("сохранил сообщение в чате")
                 if msg.ChatID == m.currentChatID {
                     m.MessagesBinding.Append(msg)
                 }
                 break
             }
         }
-
-        m.MessagesBinding.Append(msg)
     }
 }
 
@@ -110,14 +129,6 @@ func (m *AppModel) SetCurrentChat(chatID string) {
             for _, msg := range chat.Messages {
                 m.MessagesBinding.Append(msg)
             }
-            // fmt.Println("нашел чат")
-            // for i := 0; i < len(chat.Messages); i++ {
-            //     msg := chat.Messages[i]
-
-            //     fmt.Println(msg.Content)
-
-            //     m.MessagesBinding.Append(msg)
-            // }
             break
         }
     }

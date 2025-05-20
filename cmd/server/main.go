@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	//"bufio"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,11 +17,14 @@ type Chat struct {
 	Type         int16
 
 	Messages []datamodel.Message
+	Users    []string // список пользователей в чате
 }
 
 type Server struct {
-	Clients map[net.Conn]bool
-	Chats   map[string]*Chat
+	Clients         map[net.Conn]bool
+	userConnections map[string]net.Conn
+	Chats           map[string]*Chat
+
 	//messages  []model.Message
 	broadcast chan datamodel.Message
 	mutex     sync.Mutex
@@ -29,89 +32,94 @@ type Server struct {
 
 func NewServer() *Server {
 	return &Server{
-		Clients: make(map[net.Conn]bool),
-		Chats:   make(map[string]*Chat),
+		Clients:         make(map[net.Conn]bool),
+		userConnections: make(map[string]net.Conn),
+		Chats:           make(map[string]*Chat),
 		//messages:  []model.Message{},
 		broadcast: make(chan datamodel.Message),
 		mutex:     sync.Mutex{},
 	}
 }
 
-// горутина для обработки входящих сообщений
+// В методе handleConnection():
 func (s *Server) handleConnection(conn net.Conn) {
 	defer conn.Close()
+	decoder := json.NewDecoder(conn)
 
-	// добавление подключенного клиента в список
-	s.mutex.Lock()
-	s.Clients[conn] = true
-	s.mutex.Unlock()
-	//defer delete(s.Clients, conn) // так как работаю с Mutex нужно дополнительно использовать Lock и Unlock
-
-	// отправляем историю сообщений новому клиенту
-	// вероятно пока что рано это делать
-	// for _, msg := range s.messages {
-	// 	jsonMsg, _ := json.Marshal(msg)
-	// 	fmt.Fprintf(conn, "%s\n", jsonMsg)
-	// }
-
-	// получаем сообщения от клиента
-	scanner := bufio.NewScanner(conn)
-	for scanner.Scan() {
-		var msg datamodel.Message
-		err := json.Unmarshal(scanner.Bytes(), &msg)
-		if err != nil {
-			fmt.Println("Ошибка чтения сообщения:", err)
-			continue
-		}
-		fmt.Println("принял ", msg)
-		s.broadcast <- msg // пока что отправляем всем клиентам пока нет логики идентификации
+	// Регистрация пользователя
+	var initMsg struct{ UserID string }
+	if err := decoder.Decode(&initMsg); err != nil {
+		fmt.Println("Ошибка регистрации:", err)
+		return
 	}
 
-	// удаление клиента при отключении
+	s.mutex.Lock()
+	s.Clients[conn] = true
+	s.userConnections[initMsg.UserID] = conn
+
+	// Создаем/обновляем чат
+	if chat, ok := s.Chats["test"]; ok {
+		chat.Users = append(chat.Users, initMsg.UserID)
+	} else {
+		s.Chats["test"] = &Chat{
+			ID:    "test",
+			Users: []string{initMsg.UserID},
+		}
+	}
+	s.mutex.Unlock()
+
+	// Обработка сообщений
+	for {
+		var msg datamodel.Message
+		if err := decoder.Decode(&msg); err != nil {
+			fmt.Println("Клиент отключился:", initMsg.UserID)
+			break
+		}
+		s.broadcast <- msg
+	}
+
+	// Очистка при отключении
 	s.mutex.Lock()
 	delete(s.Clients, conn)
+	delete(s.userConnections, initMsg.UserID)
+	for _, chat := range s.Chats {
+		for i, userID := range chat.Users {
+			if userID == initMsg.UserID {
+				chat.Users = append(chat.Users[:i], chat.Users[i+1:]...)
+				break
+			}
+		}
+	}
 	s.mutex.Unlock()
 }
 
-// рассылка всем
+// В методе runBroadcast():
 func (s *Server) runBroadcast() {
-	for {
-		msg := <-s.broadcast
-		fmt.Println("Вытащил")
+	for msg := range s.broadcast {
 		s.mutex.Lock()
 
-		fmt.Println("решаю в какой чат отправить")
-
-		// если чат для сообщения есть, то помещаем сообщение в него
-		chat, ok := s.Chats[msg.ChatID]
-		fmt.Println("поискал")
-		if ok {
-			fmt.Println("чат есть")
-			chat.Messages = append(chat.Messages, msg)
-		} else {
-			fmt.Println("создаю новый")
-			// если такого чата нет, то создаем новый чат
-			newChat := &Chat{
-				ID:       msg.ChatID,
-				Name:     "NewChat",
-				Type:     1,
-				Messages: make([]datamodel.Message, 0),
+		// Обновляем чат
+		chat, exists := s.Chats[msg.ChatID]
+		if !exists {
+			chat = &Chat{
+				ID:    msg.ChatID,
+				Users: []string{},
 			}
-			fmt.Println("вроде создал")
-			newChat.Messages = append(newChat.Messages, msg)
-			fmt.Println("ароде добавил")
-			s.Chats[msg.ChatID] = newChat
+			s.Chats[msg.ChatID] = chat
 		}
+		chat.Messages = append(chat.Messages, msg)
 
-		fmt.Println("решил")
-
+		// Отправка сообщений
+		for _, userID := range chat.Users {
+			if userID != msg.Sender {
+				if conn, ok := s.userConnections[userID]; ok {
+					if err := json.NewEncoder(conn).Encode(msg); err != nil {
+						fmt.Println("Ошибка отправки:", err)
+					}
+				}
+			}
+		}
 		s.mutex.Unlock()
-
-		//s.messages = append(s.messages, msg)
-		jsonMsg, _ := json.Marshal(msg)
-		for client := range s.Clients {
-			fmt.Fprintf(client, "%s\n", jsonMsg)
-		}
 	}
 }
 
@@ -140,4 +148,14 @@ func main() {
 		fmt.Println("новое соединение")
 		go server.handleConnection(conn)
 	}
+}
+
+func (s *Server) GetUsersOfChat(chatID string) []string {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if chat, ok := s.Chats[chatID]; ok {
+		return chat.Users
+	}
+	return []string{}
 }
