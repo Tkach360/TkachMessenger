@@ -1,4 +1,4 @@
-package datamodel
+package protocol
 
 // сообщение (пока что тествое)
 type Message struct {

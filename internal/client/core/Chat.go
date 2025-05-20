@@ -1,4 +1,6 @@
-package datamodel
+package core
+
+import "github.com/Tkach360/TkachMessenger/internal/core/protocol"
 
 // структура чата
 type Chat struct {
@@ -7,7 +9,7 @@ type Chat struct {
 	CountOfUsers int64  // может быть излишним
 	Type         int16
 
-	Messages []Message
+	Messages []protocol.Message
 	//Users []User // до поры до времени
 }
 
@@ -17,14 +19,14 @@ func NewChat(ID string, Name string, CountOfUsers int64, Type int16) Chat {
 		Name:         Name,
 		CountOfUsers: CountOfUsers,
 		Type:         Type,
-		Messages:     make([]Message, 0),
+		Messages:     make([]protocol.Message, 0),
 	}
 }
 
-func (c *Chat) AddMessage(msg Message) {
+func (c *Chat) AddMessage(msg protocol.Message) {
 	c.Messages = append(c.Messages, msg)
 }
 
-func (c *Chat) GetMessages() *[]Message {
+func (c *Chat) GetMessages() *[]protocol.Message {
 	return &c.Messages
 }
