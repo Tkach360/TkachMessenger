@@ -43,3 +43,24 @@ func (a *APIServer) GetUserPassword(userID string) ([]byte, error) {
 
 	return []byte("кто ты воин"), nil
 }
+
+// получить всех пользователей чата по ID чата
+func (a *APIServer) GetChatUsersID(chatID string) ([]string, error) {
+	// пока что тестовое
+
+	return []string{"qwer", "rewq", "кто ты воин"}, nil
+}
+
+// сохранить сообщение
+func (a *APIServer) SaveMessage(msg protocol.Message) error {
+
+	// пока что тестовое
+
+	return nil
+}
+
+// добавить пользователя в чат
+func (a *APIServer) JoinUserInChat(userID string, chatID string) error {
+	// пока что тестовое
+	return nil
+}

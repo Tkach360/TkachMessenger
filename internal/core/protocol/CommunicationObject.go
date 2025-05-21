@@ -6,7 +6,7 @@ import "encoding/json"
 // внутри может содержать как служебное сообщение для приложения
 // так и сообщение с контентом
 type CommunicationObject struct {
-	Type int16 `json:"Type"`
+	Type CommunicationObjectType `json:"Type"`
 
 	// json.RawMessage позволяет отложить десериализацию, то есть при
 	// десериализации ProtocolMessage содержимое Content не будет десериализовано,

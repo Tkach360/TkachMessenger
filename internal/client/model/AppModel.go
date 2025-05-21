@@ -2,6 +2,7 @@ package model
 
 import (
     //"fmt"
+    "encoding/json"
     "time"
 
     "fyne.io/fyne/v2/data/binding"
@@ -36,13 +37,15 @@ func NewAppModel(conn *tcpclient.TCPClient) *AppModel {
         apiClient:    apiClient,
     }
 
-    conn.RegisterHandler(model.handleIncomingMessage)
+    conn.RegisterHandler(protocol.MESSAGE, model.handleIncomingMessage)
+
+    //conn.RegisterHandler(model.handleIncomingMessage)
     initMsg := protocol.Message{
         ID:      1, // пока тестово
         Content: model.profile.UserID,
     }
 
-    conn.Send(initMsg)
+    conn.SendMessage(initMsg)
     //json.NewEncoder(model.conn).Encode(initMsg)
 
     model.initChats()
@@ -88,7 +91,11 @@ func (m *AppModel) SendMessage(content string) error {
         Timestamp: time.Now().Format(time.RFC3339),
     }
 
-    if err := m.connection.Send(msg); err != nil {
+    // if err := m.connection.Send(msg); err != nil {
+    //     return err
+    // }
+
+    if err := m.connection.SendMessage(msg); err != nil {
         return err
     }
 
@@ -97,7 +104,10 @@ func (m *AppModel) SendMessage(content string) error {
 }
 
 // handleIncomingMessage обрабатывает входящие сообщения
-func (m *AppModel) handleIncomingMessage(msg protocol.Message) {
+func (m *AppModel) handleIncomingMessage(obj json.RawMessage) {
+
+    var msg protocol.Message
+    json.Unmarshal(obj, &msg)
 
     // Добавляем сообщение в соответствующий чат
     for i, chat := range m.profile.Chats {

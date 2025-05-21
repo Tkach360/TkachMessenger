@@ -11,11 +11,6 @@ import (
 	"github.com/Tkach360/TkachMessenger/pkg/tcpclient"
 )
 
-type Client struct {
-	UserID string
-	Conn   net.Conn
-}
-
 type Chat struct {
 	ID      string
 	Members map[string]net.Conn
@@ -38,32 +33,48 @@ func NewServer() *Server {
 }
 
 func (s *Server) handleConnection(conn net.Conn) {
-	// Создаём TCPClient из существующего соединения
+
+	// создаём TCPClient из существующего соединения
 	client := tcpclient.NewTCPClientFromConn(conn)
+
+	/*
+	   создание отдельных TCPClient для каждого соединения вроде как оправдано
+	   так как в другом случае, если бы был один глобальный TCPClient (тогда уж TCPServer)
+	   то пришлось бы что-то делать с encoder и decoder, так как будь они общие для
+	   всех соединения, то возникали бы гонки данных. К тому же это сильно упрощает логику:
+	   логика работы с соединением находится в TCPClient, так что она изолирована,
+	   а на сервере я могу использовать что-либо для потоков (что собственно и делаю)
+
+	   Слабым местом является разве что TCPClient.handlers, так как для всех
+	   соединений будут одни и те же обработчики
+
+	   Возможно имеет смысл сделать отдельный TCPServer
+	*/
 
 	var userID string
 	var once sync.Once
 
-	// Регистрация обработчика сообщений
-	client.RegisterHandler(func(msg protocol.Message) {
-		s.mu.Lock()
-		defer s.mu.Unlock()
+	client.RegisterHandler(
+		protocol.MESSAGE,
+		func(obj json.RawMessage) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
 
-		// Первое сообщение — регистрация пользователя
-		once.Do(func() {
+			var msg protocol.Message
+			json.Unmarshal(obj, &msg)
 
-			userID = msg.Content
-			s.clients[userID] = conn
-			s.joinChat(userID, "test")
-			fmt.Printf("User %s connected\n", userID)
+			// первое сообщение — регистрация пользователя
+			once.Do(func() {
+
+				userID = msg.Content
+				s.clients[userID] = conn
+				s.joinChat(userID, "test")
+				fmt.Printf("User %s connected\n", userID)
+			})
+
+			s.apiServer.SaveMessage(msg)
+			s.broadcastToChat(msg)
 		})
-
-		// Последующие сообщения — обработка чата
-		if chat, exists := s.chats[msg.ChatID]; exists {
-			chat.History = append(chat.History, msg)
-			s.broadcastToChat(msg, chat)
-		}
-	})
 
 	// Регистрация on-close хендлера
 	client.SetOnClose(func() {
@@ -89,12 +100,26 @@ func (s *Server) joinChat(userID, chatID string) {
 	s.chats[chatID].Members[userID] = s.clients[userID]
 }
 
-func (s *Server) broadcastToChat(msg protocol.Message, chat *Chat) {
+func (s *Server) broadcastToChat(msg protocol.Message) {
+
 	jsonMsg, _ := json.Marshal(msg)
-	for userID, conn := range chat.Members {
-		if userID != msg.Sender {
-			fmt.Fprintf(conn, "%s\n", jsonMsg)
-			fmt.Println("    отправил: ", userID)
+
+	obj := protocol.CommunicationObject{
+		Type:    protocol.MESSAGE,
+		Content: jsonMsg,
+	}
+
+	jsonObj, _ := json.Marshal(obj)
+
+	if users, err := s.apiServer.GetChatUsersID(msg.ChatID); err == nil {
+		for _, user := range users {
+			if user != msg.Sender {
+				conn, ok := s.clients[user]
+				if ok {
+					fmt.Fprintf(conn, "%s\n", jsonObj)
+					fmt.Println("    отправил: ", user)
+				}
+			}
 		}
 	}
 }
@@ -135,169 +160,3 @@ func main() {
 		go server.handleConnection(conn)
 	}
 }
-
-// package main
-
-// import (
-// 	//"bufio"
-// 	"encoding/json"
-// 	"fmt"
-// 	"net"
-// 	"sync"
-
-// 	"github.com/Tkach360/TkachMessenger/internal/client/core" // пока что тестово
-// )
-
-// type Chat struct {
-// 	ID           string
-// 	Name         string // если чат личный, то содержит имя собеседника
-// 	CountOfUsers int64  // может быть излишним
-// 	Type         int16
-
-// 	Messages []core.Message
-// 	Users    []string // список пользователей в чате
-// }
-
-// type Server struct {
-// 	Clients         map[net.Conn]bool
-// 	userConnections map[string]net.Conn
-// 	Chats           map[string]*Chat
-
-// 	//messages  []model.Message
-// 	broadcast chan core.Message
-// 	mutex     sync.Mutex
-// }
-
-// func NewServer() *Server {
-// 	return &Server{
-// 		Clients:         make(map[net.Conn]bool),
-// 		userConnections: make(map[string]net.Conn),
-// 		Chats:           make(map[string]*Chat),
-// 		//messages:  []model.Message{},
-// 		broadcast: make(chan core.Message),
-// 		mutex:     sync.Mutex{},
-// 	}
-// }
-
-// // В методе handleConnection():
-// func (s *Server) handleConnection(conn net.Conn) {
-// 	defer conn.Close()
-// 	decoder := json.NewDecoder(conn)
-
-// 	// Регистрация пользователя
-// 	var initMsg struct{ UserID string }
-// 	if err := decoder.Decode(&initMsg); err != nil {
-// 		fmt.Println("Ошибка регистрации:", err)
-// 		return
-// 	}
-
-// 	s.mutex.Lock()
-// 	s.Clients[conn] = true
-// 	s.userConnections[initMsg.UserID] = conn
-
-// 	// Создаем/обновляем чат
-// 	if chat, ok := s.Chats["test"]; ok {
-// 		chat.Users = append(chat.Users, initMsg.UserID)
-// 	} else {
-// 		s.Chats["test"] = &Chat{
-// 			ID:    "test",
-// 			Users: []string{initMsg.UserID},
-// 		}
-// 	}
-// 	s.mutex.Unlock()
-
-// 	// Обработка сообщений
-// 	for {
-// 		var msg core.Message
-// 		if err := decoder.Decode(&msg); err != nil {
-// 			fmt.Println("Клиент отключился:", initMsg.UserID)
-// 			break
-// 		}
-// 		s.broadcast <- msg
-// 	}
-
-// 	// Очистка при отключении
-// 	s.mutex.Lock()
-// 	delete(s.Clients, conn)
-// 	delete(s.userConnections, initMsg.UserID)
-// 	for _, chat := range s.Chats {
-// 		for i, userID := range chat.Users {
-// 			if userID == initMsg.UserID {
-// 				chat.Users = append(chat.Users[:i], chat.Users[i+1:]...)
-// 				break
-// 			}
-// 		}
-// 	}
-// 	s.mutex.Unlock()
-// }
-
-// // В методе runBroadcast():
-// func (s *Server) runBroadcast() {
-// 	for msg := range s.broadcast {
-// 		s.mutex.Lock()
-
-// 		fmt.Println("принял сообщение: ", msg.Content)
-
-// 		// Обновляем чат
-// 		chat, exists := s.Chats[msg.ChatID]
-// 		if !exists {
-// 			chat = &Chat{
-// 				ID:    msg.ChatID,
-// 				Users: []string{},
-// 			}
-// 			s.Chats[msg.ChatID] = chat
-// 		}
-// 		chat.Messages = append(chat.Messages, msg)
-
-// 		// Отправка сообщений
-// 		for _, userID := range chat.Users {
-// 			if userID != msg.Sender {
-// 				if conn, ok := s.userConnections[userID]; ok {
-// 					fmt.Println("   адресат: ", userID)
-// 					if err := json.NewEncoder(conn).Encode(msg); err != nil {
-// 						fmt.Println("Ошибка отправки:", err)
-// 					}
-// 					fmt.Println("отправил: ", msg.Content)
-// 				}
-// 			}
-// 		}
-// 		s.mutex.Unlock()
-// 	}
-// }
-
-// func main() {
-// 	server := NewServer()
-
-// 	fmt.Println(server.Clients)
-
-// 	go server.runBroadcast()
-
-// 	// запуск собственно TCP сервера
-// 	ln, err := net.Listen("tcp", "localhost:8080") // тоже в Config
-// 	if err != nil {
-// 		fmt.Println("Ошибка запуска сервера:", err)
-// 	}
-// 	defer ln.Close()
-
-// 	fmt.Println("Сервер запущен на :8080")
-
-// 	for {
-// 		conn, err := ln.Accept()
-// 		if err != nil {
-// 			fmt.Println("Ошибка принятия соединения:", err)
-// 			continue
-// 		}
-// 		fmt.Println("новое соединение")
-// 		go server.handleConnection(conn)
-// 	}
-// }
-
-// func (s *Server) GetUsersOfChat(chatID string) []string {
-// 	s.mutex.Lock()
-// 	defer s.mutex.Unlock()
-
-// 	if chat, ok := s.Chats[chatID]; ok {
-// 		return chat.Users
-// 	}
-// 	return []string{}
-// }
