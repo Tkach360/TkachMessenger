@@ -8,19 +8,15 @@ import (
     "github.com/Tkach360/TkachMessenger/internal/core/protocol"
 )
 
-// структура функции-приемника сообщений
-type MessageHandler func(msg protocol.Message)
-
 type Handler func(obj json.RawMessage)
 
 // тип клиента TCP
 // предназначен для приема сообщений и обработки их
 // при помощи обработчиков
 type TCPClient struct {
-    conn     net.Conn
-    encoder  *json.Encoder
-    decoder  *json.Decoder
-    handlers []MessageHandler
+    conn    net.Conn
+    encoder *json.Encoder
+    decoder *json.Decoder
 
     // хеш-таблица приемников, ключ - тип объекта коммуникации, значение - соответствующий приемник
     handlers_ map[protocol.CommunicationObjectType]Handler
@@ -83,6 +79,25 @@ func (c *TCPClient) SendMessage(msg protocol.Message) error {
     return c.encoder.Encode(obj)
 }
 
+func (c *TCPClient) SendAuthRequest(userID string, password []byte) error {
+
+    auth := protocol.AuthRequest{
+        UserID:   userID,
+        Password: password,
+    }
+
+    byteAuth, _ := json.Marshal(auth)
+
+    obj := protocol.CommunicationObject{
+        Type:    protocol.AUTH_REQUEST,
+        Content: byteAuth,
+    }
+
+    c.encoder.Encode(obj)
+
+    return nil
+}
+
 // установка прослушивания
 func (c *TCPClient) Listen() {
     for {
@@ -96,16 +111,9 @@ func (c *TCPClient) Listen() {
         }
 
         // запускаю обработчик соответствующий типу объекта коммуникации
-
-        if _, ok := c.handlers_[obj.Type]; !ok {
-            fmt.Println("нет такого обработчика: ", obj.Type)
+        if handler, ok := c.handlers_[obj.Type]; ok {
+            go handler(obj.Content)
         }
-
-        if obj.Content == nil {
-            fmt.Println("контент пустой")
-        }
-
-        go c.handlers_[obj.Type](obj.Content)
     }
 }
 

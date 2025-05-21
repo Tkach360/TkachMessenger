@@ -11,23 +11,15 @@ import (
 	"github.com/Tkach360/TkachMessenger/pkg/tcpclient"
 )
 
-type Chat struct {
-	ID      string
-	Members map[string]net.Conn
-	History []protocol.Message
-}
-
 type Server struct {
 	mu        sync.Mutex
 	apiServer api.APIServer
 	clients   map[string]net.Conn
-	chats     map[string]*Chat
 }
 
 func NewServer() *Server {
 	return &Server{
 		clients:   make(map[string]net.Conn),
-		chats:     make(map[string]*Chat),
 		apiServer: *api.NewAPIServer(),
 	}
 }
@@ -68,12 +60,11 @@ func (s *Server) handleConnection(conn net.Conn) {
 
 				userID = msg.Content
 				s.clients[userID] = conn
-				s.joinChat(userID, "test")
 				fmt.Printf("User %s connected\n", userID)
 			})
 
 			s.apiServer.SaveMessage(msg)
-			s.broadcastToChat(msg)
+			s.SendToUsers(msg)
 		})
 
 	// Регистрация on-close хендлера
@@ -90,17 +81,8 @@ func (s *Server) handleConnection(conn net.Conn) {
 	client.Listen()
 }
 
-func (s *Server) joinChat(userID, chatID string) {
-	if _, exists := s.chats[chatID]; !exists {
-		s.chats[chatID] = &Chat{
-			ID:      chatID,
-			Members: make(map[string]net.Conn),
-		}
-	}
-	s.chats[chatID].Members[userID] = s.clients[userID]
-}
-
-func (s *Server) broadcastToChat(msg protocol.Message) {
+// отправка пользовательского сообщения пользователям
+func (s *Server) SendToUsers(msg protocol.Message) {
 
 	jsonMsg, _ := json.Marshal(msg)
 
@@ -124,22 +106,14 @@ func (s *Server) broadcastToChat(msg protocol.Message) {
 	}
 }
 
+// обработчик закрытия соединения
 func (s *Server) handleDisconnect(userID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	delete(s.clients, userID)
-	for _, chat := range s.chats {
-		delete(chat.Members, userID)
-	}
 	fmt.Printf("User %s disconnected\n", userID)
 }
-
-// func (s *Server) AuthUser(userID string, passwod []byte) {
-// 	if pass, err := s.apiServer.GetPassword(userID); err != nil {
-
-// 	}
-// }
 
 func main() {
 	server := NewServer()
