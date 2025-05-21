@@ -19,6 +19,7 @@ type TCPClient struct {
     encoder  *json.Encoder
     decoder  *json.Decoder
     handlers []MessageHandler
+    onClose  func() // функция обработки закрытия соединения
 }
 
 func NewTCPClient(address string) (*TCPClient, error) {
@@ -32,6 +33,19 @@ func NewTCPClient(address string) (*TCPClient, error) {
         encoder: json.NewEncoder(conn), // кодирует сообщение в JSON и отправляет
         decoder: json.NewDecoder(conn), // декодирует пришедшее сообщение из JSON
     }, nil
+}
+
+// создание клиента из существующего соединения
+func NewTCPClientFromConn(conn net.Conn) *TCPClient {
+    return &TCPClient{
+        conn:    conn,
+        encoder: json.NewEncoder(conn),
+        decoder: json.NewDecoder(conn),
+    }
+}
+
+func (c *TCPClient) SetOnClose(fn func()) {
+    c.onClose = fn
 }
 
 // добавление нового обработчика
@@ -51,6 +65,9 @@ func (c *TCPClient) Listen() {
         var msg protocol.Message
         if err := c.decoder.Decode(&msg); err != nil {
             fmt.Println("Connection closed:", err)
+            if c.onClose != nil {
+                c.onClose()
+            }
             return
         }
 

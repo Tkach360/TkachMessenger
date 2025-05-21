@@ -7,6 +7,8 @@ import (
 	"sync"
 
 	"github.com/Tkach360/TkachMessenger/internal/core/protocol"
+	"github.com/Tkach360/TkachMessenger/internal/server/api"
+	"github.com/Tkach360/TkachMessenger/pkg/tcpclient"
 )
 
 type Client struct {
@@ -21,52 +23,60 @@ type Chat struct {
 }
 
 type Server struct {
-	mu      sync.Mutex
-	clients map[string]net.Conn
-	chats   map[string]*Chat
+	mu        sync.Mutex
+	apiServer api.APIServer
+	clients   map[string]net.Conn
+	chats     map[string]*Chat
 }
 
 func NewServer() *Server {
 	return &Server{
-		clients: make(map[string]net.Conn),
-		chats:   make(map[string]*Chat),
+		clients:   make(map[string]net.Conn),
+		chats:     make(map[string]*Chat),
+		apiServer: *api.NewAPIServer(),
 	}
 }
 
 func (s *Server) handleConnection(conn net.Conn) {
-	defer conn.Close()
-	decoder := json.NewDecoder(conn)
+	// Создаём TCPClient из существующего соединения
+	client := tcpclient.NewTCPClientFromConn(conn)
 
-	// Регистрация клиента
-	var initMsg protocol.Message
-	if err := decoder.Decode(&initMsg); err != nil {
-		fmt.Printf("Registration error: %v", err)
-		return
-	}
+	var userID string
+	var once sync.Once
 
-	s.mu.Lock()
-	s.clients[initMsg.Content] = conn
-	s.joinChat(initMsg.Content, "test")
-	s.mu.Unlock()
-
-	fmt.Printf("User %s connected\n", initMsg.Content)
-
-	// Обработка входящих сообщений
-	for {
-		var msg protocol.Message
-		if err := decoder.Decode(&msg); err != nil {
-			s.handleDisconnect(initMsg.Content)
-			return
-		}
-
+	// Регистрация обработчика сообщений
+	client.RegisterHandler(func(msg protocol.Message) {
 		s.mu.Lock()
+		defer s.mu.Unlock()
+
+		// Первое сообщение — регистрация пользователя
+		once.Do(func() {
+
+			userID = msg.Content
+			s.clients[userID] = conn
+			s.joinChat(userID, "test")
+			fmt.Printf("User %s connected\n", userID)
+		})
+
+		// Последующие сообщения — обработка чата
 		if chat, exists := s.chats[msg.ChatID]; exists {
-			fmt.Println("    принял: ", msg.Content, " от ", msg.Sender)
 			chat.History = append(chat.History, msg)
 			s.broadcastToChat(msg, chat)
 		}
-		s.mu.Unlock()
-	}
+	})
+
+	// Регистрация on-close хендлера
+	client.SetOnClose(func() {
+		s.mu.Lock()
+
+		defer s.mu.Unlock()
+		if userID != "" {
+			s.handleDisconnect(userID)
+		}
+	})
+
+	// Запуск прослушивания
+	client.Listen()
 }
 
 func (s *Server) joinChat(userID, chatID string) {
@@ -99,6 +109,12 @@ func (s *Server) handleDisconnect(userID string) {
 	}
 	fmt.Printf("User %s disconnected\n", userID)
 }
+
+// func (s *Server) AuthUser(userID string, passwod []byte) {
+// 	if pass, err := s.apiServer.GetPassword(userID); err != nil {
+
+// 	}
+// }
 
 func main() {
 	server := NewServer()

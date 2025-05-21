@@ -4,5 +4,12 @@ package protocol
 type CommunicationObjectType int16
 
 const (
-	MESSAGE CommunicationObjectType = iota
+	// запрос на аутентификацию
+	AUTH_REQUEST CommunicationObjectType = iota
+
+	// ответ на аутентификацию
+	AUTH_RESPONSE
+
+	// пользовательское сообщение
+	MESSAGE
 )
