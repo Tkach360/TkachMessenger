@@ -48,7 +48,7 @@ func (v *View) createUI() {
     v.chatsListContainer = v.CreateChatsListContainer()
 
     v.border = container.NewBorder(
-        v.CreateTopPanel(),
+        nil,
         nil,
         nil,
         nil,
@@ -120,7 +120,7 @@ func (v *View) CreateInputContainer() *fyne.Container {
 // создать контейнер чата
 func (v *View) CreateChatContainer() *fyne.Container {
     return container.NewBorder(
-        nil,
+        v.CreateTopPanel(),
         v.CreateInputContainer(),
         nil,
         nil,
