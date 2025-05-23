@@ -147,6 +147,7 @@ func (v *View) CreateChatsListScroll() fyne.CanvasObject {
         v.border.Refresh()
         v.controller.OpenChat(chat.ID)
 
+        chatsList.Unselect(id)
         // v.border.Refresh()
     }
 
