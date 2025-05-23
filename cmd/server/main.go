@@ -48,7 +48,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 
 	client.RegisterHandler(
 		protocol.MESSAGE,
-		func(obj json.RawMessage) {
+		func(obj []byte) {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 

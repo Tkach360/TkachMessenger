@@ -8,7 +8,7 @@ import (
     "github.com/Tkach360/TkachMessenger/internal/core/protocol"
 )
 
-type Handler func(obj json.RawMessage)
+type Handler func(obj []byte)
 
 // тип клиента TCP
 // предназначен для приема сообщений и обработки их
@@ -67,12 +67,12 @@ func (c *TCPClient) Send(msg protocol.Message) error {
 
 // отправка сообщения
 // возвращает ошибку в случае неудачи
-func (c *TCPClient) SendMessage(msg protocol.Message) error {
+func (c *TCPClient) SendAsCommunicationObject(t protocol.CommunicationObjectType, msg interface{}) error {
 
     content, _ := json.Marshal(msg)
 
     obj := protocol.CommunicationObject{
-        Type:    protocol.MESSAGE,
+        Type:    t,
         Content: content,
     }
 

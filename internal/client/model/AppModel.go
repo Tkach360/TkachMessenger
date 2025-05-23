@@ -43,7 +43,7 @@ func NewAppModel(conn *tcpclient.TCPClient) *AppModel {
         Content: model.profile.UserID,
     }
 
-    conn.SendMessage(initMsg)
+    conn.SendAsCommunicationObject(protocol.MESSAGE, initMsg)
 
     model.initChats()
     return model
@@ -88,7 +88,7 @@ func (m *AppModel) SendMessage(content string) error {
         Timestamp: time.Now().Format(time.RFC3339),
     }
 
-    if err := m.connection.SendMessage(msg); err != nil {
+    if err := m.connection.SendAsCommunicationObject(protocol.MESSAGE, msg); err != nil {
         return err
     }
 
@@ -97,7 +97,7 @@ func (m *AppModel) SendMessage(content string) error {
 }
 
 // обрабатка входящиех сообщений
-func (m *AppModel) handleIncomingMessage(obj json.RawMessage) {
+func (m *AppModel) handleIncomingMessage(obj []byte) {
 
     var msg protocol.Message
     json.Unmarshal(obj, &msg)
