@@ -19,8 +19,8 @@ type TCPClient struct {
     decoder *json.Decoder
 
     // хеш-таблица приемников, ключ - тип объекта коммуникации, значение - соответствующий приемник
-    handlers_ map[protocol.CommunicationObjectType]Handler
-    onClose   func() // функция обработки закрытия соединения
+    handlers map[protocol.CommunicationObjectType]Handler
+    onClose  func() // функция обработки закрытия соединения
 }
 
 func NewTCPClient(address string) (*TCPClient, error) {
@@ -30,20 +30,20 @@ func NewTCPClient(address string) (*TCPClient, error) {
     }
 
     return &TCPClient{
-        conn:      conn,
-        encoder:   json.NewEncoder(conn), // кодирует сообщение в JSON и отправляет
-        decoder:   json.NewDecoder(conn), // декодирует пришедшее сообщение из JSON
-        handlers_: make(map[protocol.CommunicationObjectType]Handler),
+        conn:     conn,
+        encoder:  json.NewEncoder(conn), // кодирует сообщение в JSON и отправляет
+        decoder:  json.NewDecoder(conn), // декодирует пришедшее сообщение из JSON
+        handlers: make(map[protocol.CommunicationObjectType]Handler),
     }, nil
 }
 
 // создание клиента из существующего соединения
 func NewTCPClientFromConn(conn net.Conn) *TCPClient {
     return &TCPClient{
-        conn:      conn,
-        encoder:   json.NewEncoder(conn),
-        decoder:   json.NewDecoder(conn),
-        handlers_: make(map[protocol.CommunicationObjectType]Handler),
+        conn:     conn,
+        encoder:  json.NewEncoder(conn),
+        decoder:  json.NewDecoder(conn),
+        handlers: make(map[protocol.CommunicationObjectType]Handler),
     }
 }
 
@@ -56,7 +56,7 @@ func (c *TCPClient) RegisterHandler(
     objtype protocol.CommunicationObjectType,
     handler Handler,
 ) {
-    c.handlers_[objtype] = handler
+    c.handlers[objtype] = handler
 }
 
 // отправка сообщения
@@ -111,7 +111,7 @@ func (c *TCPClient) Listen() {
         }
 
         // запускаю обработчик соответствующий типу объекта коммуникации
-        if handler, ok := c.handlers_[obj.Type]; ok {
+        if handler, ok := c.handlers[obj.Type]; ok {
             go handler(obj.Content)
         }
     }

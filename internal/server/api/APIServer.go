@@ -1,11 +1,20 @@
 package api
 
-import "github.com/Tkach360/TkachMessenger/internal/core/protocol"
+import (
+	"errors"
+	"fmt"
 
-type APIServer struct{}
+	"github.com/Tkach360/TkachMessenger/internal/core/protocol"
+)
+
+type APIServer struct {
+	data map[string][]protocol.Message
+}
 
 func NewAPIServer() *APIServer {
-	return &APIServer{}
+	return &APIServer{
+		data: make(map[string][]protocol.Message),
+	}
 }
 
 func (a *APIServer) GetProfile(userID string) *protocol.ProfileObject {
@@ -54,9 +63,24 @@ func (a *APIServer) GetChatUsersID(chatID string) ([]string, error) {
 // сохранить сообщение
 func (a *APIServer) SaveMessage(msg protocol.Message) error {
 
-	// пока что тестовое
+	if msgs, ok := a.data[msg.ChatID]; ok {
+		msgs = append(msgs, msg)
+	} else {
+		a.data[msg.ChatID] = make([]protocol.Message, 0)
+		a.data[msg.ChatID] = append(a.data[msg.ChatID], msg)
+	}
+
+	fmt.Println("Сохранил сообщение")
 
 	return nil
+}
+
+func (a *APIServer) GetAllMessages(chatID string) ([]protocol.Message, error) {
+	if msgs, ok := a.data[chatID]; ok {
+		return msgs, nil
+	} else {
+		return nil, errors.New("Нет такого чата")
+	}
 }
 
 // добавить пользователя в чат

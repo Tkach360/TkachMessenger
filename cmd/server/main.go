@@ -67,7 +67,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 			s.SendToUsers(msg)
 		})
 
-	// Регистрация on-close хендлера
+	// регистрация on-close хендлера
 	client.SetOnClose(func() {
 		s.mu.Lock()
 
@@ -77,7 +77,6 @@ func (s *Server) handleConnection(conn net.Conn) {
 		}
 	})
 
-	// Запуск прослушивания
 	client.Listen()
 }
 
