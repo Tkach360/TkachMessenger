@@ -57,51 +57,6 @@ func (v *View) createUI() {
 
     v.window.SetContent(v.border)
     v.window.Resize(fyne.NewSize(400, 300))
-
-    // v.messageEntry = widget.NewEntry()
-    // sendButton := widget.NewButton("Send", v.onSend)
-
-    // v.chatList = widget.NewList(
-    //     func() int {
-    //         length := v.controller.GetChatsBinding().Length()
-    //         return length
-    //     },
-    //     func() fyne.CanvasObject {
-    //         return widget.NewLabel("Chat")
-    //     },
-    //     func(id widget.ListItemID, obj fyne.CanvasObject) {
-    //         label := obj.(*widget.Label)
-    //         item, _ := v.controller.GetChatsBinding().GetItem(id)
-    //         label.SetText(item.(string))
-    //     },
-    // )
-
-    // v.messageList = widget.NewList(
-    //     func() int {
-    //         length, _ := v.controller.GetMessagesBinding().Length()
-    //         return length
-    //     },
-    //     func() fyne.CanvasObject {
-    //         return widget.NewLabel("Message")
-    //     },
-    //     func(id widget.ListItemID, obj fyne.CanvasObject) {
-    //         label := obj.(*widget.Label)
-    //         item, _ := v.controller.GetMessagesBinding().GetItem(id)
-    //         label.SetText(item.(string))
-    //     },
-    // )
-
-    // // Компоновка интерфейса
-    // content := container.NewBorder(
-    //     nil,
-    //     container.NewVBox(v.messageEntry, sendButton),
-    //     v.chatList,
-    //     nil,
-    //     v.messageList,
-    // )
-
-    // v.window.SetContent(content)
-    // v.window.Resize(fyne.NewSize(800, 600))
 }
 
 // создать контейнер ввода сообщения
@@ -332,6 +287,7 @@ func (v *View) CreateTopPanel() *fyne.Container {
     backBtn := widget.NewButton("<-", func() {
         v.border.Objects[0] = v.chatsListContainer
         v.border.Refresh()
+        v.controller.SetChatsList()
     })
 
     return container.NewBorder(

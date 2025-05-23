@@ -21,7 +21,7 @@ type AppModel struct {
 
     messagesList binding.UntypedList
     chatsList    binding.UntypedList
-    currentChat  *core.Chat
+    CurrentChat  *core.Chat
 }
 
 func NewAppModel(conn *tcpclient.TCPClient) *AppModel {
@@ -39,11 +39,18 @@ func NewAppModel(conn *tcpclient.TCPClient) *AppModel {
 
     conn.RegisterHandler(protocol.MESSAGE, model.handleIncomingMessage)
 
-    initMsg := protocol.Message{
-        Content: model.profile.UserID,
+    // initMsg := protocol.Message{
+    //     Content: model.profile.UserID,
+    // }
+
+    // conn.SendAsCommunicationObject(protocol.MESSAGE, initMsg)
+
+    auth := protocol.AuthRequest{
+        UserID:   model.profile.UserID,
+        Password: []byte(model.profile.UserID),
     }
 
-    conn.SendAsCommunicationObject(protocol.MESSAGE, initMsg)
+    conn.SendAsCommunicationObject(protocol.AUTH_REQUEST, auth)
 
     model.initChats()
     return model
@@ -69,7 +76,7 @@ func (m *AppModel) SwitchChat(chatID string) {
     m.messagesList.Set([]interface{}{})
     for _, chat := range m.profile.Chats {
         if chat.ID == chatID {
-            m.currentChat = &chat
+            m.CurrentChat = &chat
             for _, msg := range chat.Messages {
                 m.messagesList.Append(msg)
             }
@@ -82,7 +89,7 @@ func (m *AppModel) SwitchChat(chatID string) {
 func (m *AppModel) SendMessage(content string) error {
 
     msg := protocol.Message{
-        ChatID:    m.currentChat.ID,
+        ChatID:    m.CurrentChat.ID,
         Sender:    m.profile.UserID,
         Content:   content,
         Timestamp: time.Now().Format(time.RFC3339),
@@ -108,9 +115,11 @@ func (m *AppModel) handleIncomingMessage(obj []byte) {
 
             m.profile.Chats[i].Messages = append(m.profile.Chats[i].Messages, msg)
 
-            // если это текущий чат - обновляем интерфейс
-            if msg.ChatID == m.currentChat.ID {
-                m.messagesList.Append(msg)
+            if m.CurrentChat != nil {
+                // если это текущий чат - обновляем интерфейс
+                if msg.ChatID == m.CurrentChat.ID {
+                    m.messagesList.Append(msg)
+                }
             }
             break
         }
@@ -121,7 +130,7 @@ func (m *AppModel) addMessageToChat(msg protocol.Message) {
     for i, chat := range m.profile.Chats {
         if chat.ID == msg.ChatID {
             m.profile.Chats[i].AddMessage(msg)
-            if msg.ChatID == m.currentChat.ID {
+            if msg.ChatID == m.CurrentChat.ID {
                 m.messagesList.Append(msg)
             }
             break

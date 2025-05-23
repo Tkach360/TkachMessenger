@@ -44,28 +44,33 @@ func (s *Server) handleConnection(conn net.Conn) {
 	*/
 
 	var userID string
-	var once sync.Once
+	//var once sync.Once
 
 	client.RegisterHandler(
-		protocol.MESSAGE,
+		protocol.AUTH_REQUEST,
 		func(obj []byte) {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 
-			var msg protocol.Message
-			json.Unmarshal(obj, &msg)
+			var auth protocol.AuthRequest
+			json.Unmarshal(obj, &auth)
 
 			// первое сообщение — регистрация пользователя
-			once.Do(func() {
+			// once.Do(func() {
 
-				userID = msg.Content
-				s.clients[userID] = conn
-				fmt.Printf("User %s connected\n", userID)
-			})
+			// 	s.clients[auth.UserID] = conn
+			// 	fmt.Printf("User %s connected\n", userID)
+			// })
 
-			s.apiServer.SaveMessage(msg)
-			s.SendToUsers(msg)
+			userID = auth.UserID
+			s.clients[auth.UserID] = conn
+			fmt.Printf("User %s connected\n", auth.UserID)
+
+			// s.apiServer.SaveMessage(auth)
+			// s.SendToUsers(auth)
 		})
+
+	client.RegisterHandler(protocol.MESSAGE, s.handleMessage)
 
 	// регистрация on-close хендлера
 	client.SetOnClose(func() {
@@ -78,6 +83,24 @@ func (s *Server) handleConnection(conn net.Conn) {
 	})
 
 	client.Listen()
+}
+
+func (s *Server) handleMessage(obj []byte) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var msg protocol.Message
+	json.Unmarshal(obj, &msg)
+	s.SendToUsers(msg)
+}
+
+func (s *Server) handleAuth(obj []byte) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var auth protocol.AuthRequest
+	json.Unmarshal(obj, &auth)
+
 }
 
 // отправка пользовательского сообщения пользователям
