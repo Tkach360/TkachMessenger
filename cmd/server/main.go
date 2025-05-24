@@ -71,6 +71,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 		})
 
 	client.RegisterHandler(protocol.MESSAGE, s.handleMessage)
+	client.RegisterHandler(protocol.CHAT_MESSAGE_REQUEST, s.handleChatMessagesRequest)
 
 	// регистрация on-close хендлера
 	client.SetOnClose(func() {
@@ -92,6 +93,7 @@ func (s *Server) handleMessage(obj []byte) {
 	var msg protocol.Message
 	json.Unmarshal(obj, &msg)
 	s.SendToUsers(msg)
+	s.apiServer.SaveMessage(msg)
 }
 
 func (s *Server) handleAuth(obj []byte) {
@@ -128,6 +130,24 @@ func (s *Server) SendToUsers(msg protocol.Message) {
 	}
 }
 
+func (s *Server) SendToUser(userID string, msg protocol.Message) {
+
+	conn := s.clients[userID]
+
+	jsonMsg, _ := json.Marshal(msg)
+
+	obj := protocol.CommunicationObject{
+		Type:    protocol.MESSAGE,
+		Content: jsonMsg,
+	}
+
+	jsonObj, _ := json.Marshal(obj)
+
+	fmt.Fprintf(conn, "%s\n", jsonObj)
+	fmt.Println("    отправил: ", userID)
+
+}
+
 // обработчик закрытия соединения
 func (s *Server) handleDisconnect(userID string) {
 	s.mu.Lock()
@@ -135,6 +155,22 @@ func (s *Server) handleDisconnect(userID string) {
 
 	delete(s.clients, userID)
 	fmt.Printf("User %s disconnected\n", userID)
+}
+
+func (s *Server) handleChatMessagesRequest(obj []byte) {
+
+	var cmr protocol.ChatMessagesRequest
+	json.Unmarshal(obj, &cmr)
+
+	var test protocol.Message
+
+	msgs, _ := s.apiServer.GetAllMessages(cmr.ChatID)
+	for _, msg := range msgs {
+		s.SendToUser(cmr.Requester, msg)
+		test = msg
+	}
+
+	fmt.Println("Обработал ChatMessagesRequest, последнее сообщение: ", test.Content)
 }
 
 func main() {

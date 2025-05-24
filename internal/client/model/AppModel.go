@@ -3,6 +3,7 @@ package model
 import (
     //"fmt"
     "encoding/json"
+    "fmt"
     "time"
 
     "fyne.io/fyne/v2/data/binding"
@@ -136,4 +137,23 @@ func (m *AppModel) addMessageToChat(msg protocol.Message) {
             break
         }
     }
+}
+
+func (m *AppModel) SendChatMessagesRequest(chatID string) {
+
+    m.connection.SendAsCommunicationObject(
+        protocol.CHAT_MESSAGE_REQUEST,
+        protocol.ChatMessagesRequest{
+            ChatID:    chatID,
+            Requester: m.profile.UserID,
+        },
+    )
+}
+
+func (m *AppModel) LoadChats() {
+    for _, chat := range m.profile.Chats {
+        m.SendChatMessagesRequest(chat.ID)
+    }
+
+    fmt.Println("отправил все запросы чатов")
 }

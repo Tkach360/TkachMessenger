@@ -49,6 +49,9 @@ func (a *APIServer) GetUserPassword(userID string) ([]byte, error) {
 	if userID == "rewq" {
 		return []byte("rewq"), nil
 	}
+	if userID == "ttt" {
+		return []byte("ttt"), nil
+	}
 
 	return []byte("кто ты воин"), nil
 }
@@ -57,20 +60,20 @@ func (a *APIServer) GetUserPassword(userID string) ([]byte, error) {
 func (a *APIServer) GetChatUsersID(chatID string) ([]string, error) {
 	// пока что тестовое
 
-	return []string{"qwer", "rewq", "кто ты воин"}, nil
+	return []string{"qwer", "rewq", "ttt", "кто ты воин"}, nil
 }
 
 // сохранить сообщение
 func (a *APIServer) SaveMessage(msg protocol.Message) error {
 
-	if msgs, ok := a.data[msg.ChatID]; ok {
-		msgs = append(msgs, msg)
+	if _, ok := a.data[msg.ChatID]; ok {
+		a.data[msg.ChatID] = append(a.data[msg.ChatID], msg)
 	} else {
 		a.data[msg.ChatID] = make([]protocol.Message, 0)
 		a.data[msg.ChatID] = append(a.data[msg.ChatID], msg)
 	}
 
-	fmt.Println("Сохранил сообщение")
+	fmt.Println("Сохранил сообщение, размер: ", len(a.data[msg.ChatID]))
 
 	return nil
 }

@@ -19,5 +19,8 @@ func main() {
 	model := model.NewAppModel(tcpClient)
 	controller := controller.NewController(model)
 	view := view.NewView(fyneApp, controller)
+
+	model.LoadChats()
+
 	view.ShowAndRun()
 }
