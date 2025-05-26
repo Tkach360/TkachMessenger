@@ -44,7 +44,6 @@ func (s *Server) handleConnection(conn net.Conn) {
 	*/
 
 	var userID string
-	//var once sync.Once
 
 	client.RegisterHandler(
 		protocol.AUTH_REQUEST,
@@ -55,19 +54,9 @@ func (s *Server) handleConnection(conn net.Conn) {
 			var auth protocol.AuthRequest
 			json.Unmarshal(obj, &auth)
 
-			// первое сообщение — регистрация пользователя
-			// once.Do(func() {
-
-			// 	s.clients[auth.UserID] = conn
-			// 	fmt.Printf("User %s connected\n", userID)
-			// })
-
 			userID = auth.UserID
 			s.clients[auth.UserID] = conn
 			fmt.Printf("User %s connected\n", auth.UserID)
-
-			// s.apiServer.SaveMessage(auth)
-			// s.SendToUsers(auth)
 		})
 
 	client.RegisterHandler(protocol.MESSAGE, s.handleMessage)

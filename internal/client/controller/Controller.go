@@ -5,7 +5,7 @@ import (
     "github.com/Tkach360/TkachMessenger/internal/client/model"
 )
 
-// Controller обрабатывает пользовательские действия и синхронизирует View с Model
+// обрабатывает пользовательские действия и синхронизирует View с Model
 type Controller struct {
     Model *model.AppModel
 }
@@ -20,15 +20,7 @@ func NewController(model *model.AppModel) *Controller {
 func (c *Controller) HandleSendMessage(content string) {
 
     c.Model.SendMessage(content)
-
-    // if err := c.model.SendMessage(content); err != nil {
-    //     c.model.NotifyError(err.Error())
-    // }
 }
-
-// func (c *Controller) HandleSwitchChat(chatID string) {
-//     c.Model.SwitchChat(chatID)
-// }
 
 func (c *Controller) GetMessagesBinding() binding.UntypedList {
     return c.Model.GetMessagesList()

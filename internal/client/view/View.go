@@ -106,7 +106,6 @@ func (v *View) CreateChatsListScroll() fyne.CanvasObject {
 
         chatsList.Unselect(id)
         v.chatLabel.SetText(v.controller.GetChatName())
-        // v.border.Refresh()
     }
 
     scrollContainer := container.NewScroll(chatsList)

@@ -10,7 +10,6 @@ type Chat struct {
 	Type         int16
 
 	Messages []protocol.Message
-	//Users []User // до поры до времени
 }
 
 func NewChat(ID string, Name string, CountOfUsers int64, Type int16) Chat {

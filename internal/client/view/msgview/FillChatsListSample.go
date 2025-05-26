@@ -14,7 +14,6 @@ func FillChatsListSample(item binding.DataItem, obj fyne.CanvasObject) {
 
 	box := obj.(*fyne.Container)
 	nameLabel := box.Objects[0].(*widget.Label)
-	//lastOnlineLabel := box.Objects[1].(*widget.Label)
 
 	nameLabel.SetText(chat.Name)
 }

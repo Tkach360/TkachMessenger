@@ -40,12 +40,6 @@ func NewAppModel(conn *tcpclient.TCPClient) *AppModel {
 
     conn.RegisterHandler(protocol.MESSAGE, model.handleIncomingMessage)
 
-    // initMsg := protocol.Message{
-    //     Content: model.profile.UserID,
-    // }
-
-    // conn.SendAsCommunicationObject(protocol.MESSAGE, initMsg)
-
     auth := protocol.AuthRequest{
         UserID:   model.profile.UserID,
         Password: []byte(model.profile.UserID),
