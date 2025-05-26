@@ -26,9 +26,9 @@ func (c *Controller) HandleSendMessage(content string) {
     // }
 }
 
-func (c *Controller) HandleSwitchChat(chatID string) {
-    c.Model.SwitchChat(chatID)
-}
+// func (c *Controller) HandleSwitchChat(chatID string) {
+//     c.Model.SwitchChat(chatID)
+// }
 
 func (c *Controller) GetMessagesBinding() binding.UntypedList {
     return c.Model.GetMessagesList()
@@ -44,4 +44,8 @@ func (c *Controller) OpenChat(chatID string) {
 
 func (c *Controller) SetChatsList() {
     c.Model.CurrentChat = nil
+}
+
+func (c *Controller) GetChatName() string {
+    return c.Model.CurrentChat.Name
 }
